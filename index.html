@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartFile Q&A</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f8f9fa; }
+        .chat-container { max-width: 700px; margin: 2rem auto; }
+        .chat-window { height: 400px; overflow-y: auto; background: #fff; border-radius: 0.5rem; padding: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .chat-message.user { text-align: right; }
+        .chat-message.user .msg { display: inline-block; background: #0d6efd; color: #fff; border-radius: 1rem 1rem 0 1rem; padding: 0.5rem 1rem; margin: 0.25rem 0; }
+        .chat-message.bot { text-align: left; }
+        .chat-message.bot .msg { display: inline-block; background: #e9ecef; color: #212529; border-radius: 1rem 1rem 1rem 0; padding: 0.5rem 1rem; margin: 0.25rem 0; }
+        .file-info-card { margin-bottom: 1rem; }
+        .spinner-border { width: 1.5rem; height: 1.5rem; }
+        @media (max-width: 600px) {
+            .chat-container { padding: 0 0.5rem; }
+            .chat-window { height: 300px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container chat-container">
+    <h2 class="text-center mb-4">SmartFile Q&amp;A</h2>
+    <div id="alert-area"></div>
+    <div id="upload-section">
+        <div class="card p-3 mb-3">
+            <form id="upload-form" enctype="multipart/form-data">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-4">
+                        <label for="file" class="form-label">Select File</label>
+                        <input class="form-control" type="file" id="file" name="file" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="email" class="form-label">Your Email</label>
+                        <input class="form-control" type="email" id="email" name="email" required>
+                    </div>
+                    <div class="col-md-4 d-grid">
+                        <button type="submit" class="btn btn-primary" id="upload-btn">
+                            <span id="upload-btn-text">Upload &amp; Start</span>
+                            <span id="upload-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="chat-section" class="d-none">
+        <div id="file-info"></div>
+        <div class="chat-window mb-3" id="chat-window"></div>
+        <form id="question-form" class="row g-2 align-items-end">
+            <div class="col-6">
+                <input class="form-control" type="text" id="question-input" placeholder="Ask a question..." required autocomplete="off">
+            </div>
+            <div class="col-4">
+                <input class="form-control" type="file" id="chat-file" name="chat-file" accept=".pdf,.doc,.docx,.txt,image/*">
+            </div>
+            <div class="col-2 d-grid">
+                <button type="submit" class="btn btn-success" id="send-btn">
+                    <span id="send-btn-text">Send</span>
+                    <span id="send-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                </button>
+            </div>
+        </form>
+        <div class="d-flex justify-content-end mt-2">
+            <button class="btn btn-outline-secondary" id="export-btn">
+                Export Conversation to PDF
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exportModalLabel">Export Conversation</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="export-form">
+          <div class="mb-3">
+            <label for="export-email" class="form-label">Email to send PDF</label>
+            <input type="email" class="form-control" id="export-email" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">
+            <span id="export-btn-text">Export &amp; Send</span>
+            <span id="export-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script>
+
+const API_BASE = 'http://localhost:3000';
+const uploadForm = document.getElementById('upload-form');
+const uploadBtn = document.getElementById('upload-btn');
+const uploadBtnText = document.getElementById('upload-btn-text');
+const uploadSpinner = document.getElementById('upload-spinner');
+const chatSection = document.getElementById('chat-section');
+const uploadSection = document.getElementById('upload-section');
+const chatWindow = document.getElementById('chat-window');
+const questionForm = document.getElementById('question-form');
+const questionInput = document.getElementById('question-input');
+const sendBtn = document.getElementById('send-btn');
+const sendBtnText = document.getElementById('send-btn-text');
+const sendSpinner = document.getElementById('send-spinner');
+const fileInfo = document.getElementById('file-info');
+const exportBtn = document.getElementById('export-btn');
+const exportModal = new bootstrap.Modal(document.getElementById('exportModal'));
+const exportForm = document.getElementById('export-form');
+const exportEmail = document.getElementById('export-email');
+const exportBtnText = document.getElementById('export-btn-text');
+const exportSpinner = document.getElementById('export-spinner');
+const alertArea = document.getElementById('alert-area');
+
+const chatFileInput = document.getElementById('chat-file');
+
+let conversationId = null;
+let chatHistory = [];
+let fileMeta = null;
+
+function showAlert(message, type = 'danger', timeout = 4000) {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.role = 'alert';
+    alert.innerHTML = message + '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
+    alertArea.appendChild(alert);
+    if (timeout) setTimeout(() => alert.classList.remove('show'), timeout);
+}
+
+function renderFileInfo(meta) {
+    fileInfo.innerHTML = `
+        <div class="card file-info-card" style="cursor:pointer;" title="Click to preview">
+            <div class="card-body d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-file-earmark-text" style="font-size:2rem;"></i>
+                </div>
+                <div>
+                    <h6 class="card-title mb-1">${meta.filename}</h6>
+                    <div class="text-muted small">${meta.type} &middot; ${Math.round(meta.size/1024)} KB</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderChat() {
+    chatWindow.innerHTML = '';
+    chatHistory.forEach(msg => {
+        const div = document.createElement('div');
+        div.className = 'chat-message ' + (msg.role === 'user' ? 'user' : 'bot');
+        div.innerHTML = `<div class="msg">${msg.text}</div>`;
+        chatWindow.appendChild(div);
+    });
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+uploadForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    uploadBtn.disabled = true;
+    uploadBtnText.classList.add('d-none');
+    uploadSpinner.classList.remove('d-none');
+    alertArea.innerHTML = '';
+
+    const file = uploadForm.file.files[0];
+    const email = uploadForm.email.value;
+    if (!file || !email) {
+        showAlert('Please select a file and enter your email.', 'warning');
+        uploadBtn.disabled = false;
+        uploadBtnText.classList.remove('d-none');
+        uploadSpinner.classList.add('d-none');
+        return;
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('email', email);
+    formData.append('conversation_id', '');
+    try {
+        const res = await axios.post(`${API_BASE}/api/upload`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        if (res.data && res.data.conversation_id) {
+            conversationId = res.data.conversation_id;
+            fileMeta = {
+                filename: file.name,
+                type: file.type || 'Unknown',
+                size: file.size,
+                url: res.data.url || ''
+            };
+            chatHistory = [];
+            renderFileInfo(fileMeta);
+            renderChat();
+            uploadSection.classList.add('d-none');
+            chatSection.classList.remove('d-none');
+        } else {
+            showAlert('Upload failed: No conversation ID returned.','danger');
+        }
+    } catch (err) {
+        showAlert('Upload failed: ' + (err.response?.data?.error || err.message), 'danger');
+    } finally {
+        uploadBtn.disabled = false;
+        uploadBtnText.classList.remove('d-none');
+        uploadSpinner.classList.add('d-none');
+    }
+});
+
+questionForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!conversationId) return;
+    const prompt = questionInput.value.trim();
+    const file = chatFileInput.files[0];
+    if (!prompt && !file) return;
+    sendBtn.disabled = true;
+    sendBtnText.classList.add('d-none');
+    sendSpinner.classList.remove('d-none');
+
+    // If file is attached, upload it first
+    if (file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('email', ''); // No email needed for in-chat upload
+        formData.append('conversation_id', conversationId);
+        try {
+            const res = await axios.post(`${API_BASE}/api/upload`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            if (res.data && res.data.conversation_id) {
+                fileMeta = {
+                    filename: file.name,
+                    type: file.type || 'Unknown',
+                    size: file.size,
+                    url: res.data.url || ''
+                };
+                renderFileInfo(fileMeta);
+                showAlert('File uploaded to conversation.', 'success', 2000);
+            } else {
+                showAlert('File upload failed in chat.', 'danger');
+            }
+        } catch (err) {
+            showAlert('File upload failed: ' + (err.response?.data?.error || err.message), 'danger');
+            sendBtn.disabled = false;
+            sendBtnText.classList.remove('d-none');
+            sendSpinner.classList.add('d-none');
+            return;
+        }
+        chatFileInput.value = '';
+    }
+
+    if (prompt) {
+        chatHistory.push({ role: 'user', text: prompt });
+        renderChat();
+        questionInput.value = '';
+        try {
+            const res = await axios.post(`${API_BASE}/api/ask`, {
+                conversation_id: conversationId,
+                prompt
+            });
+            if (res.data && res.data.answer) {
+                chatHistory.push({ role: 'bot', text: res.data.answer });
+                renderChat();
+            } else {
+                showAlert('No answer received from backend.', 'warning');
+            }
+        } catch (err) {
+            showAlert('Error: ' + (err.response?.data?.error || err.message), 'danger');
+        }
+    }
+    sendBtn.disabled = false;
+    sendBtnText.classList.remove('d-none');
+    sendSpinner.classList.add('d-none');
+});
+
+exportBtn.addEventListener('click', () => {
+    if (!conversationId) return;
+    exportEmail.value = '';
+    exportModal.show();
+});
+
+exportForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    exportBtnText.classList.add('d-none');
+    exportSpinner.classList.remove('d-none');
+    const email = exportEmail.value;
+    try {
+        const res = await axios.post(`${API_BASE}/api/export`, {
+            conversation_id: conversationId,
+            email
+        });
+        if (res.data && res.data.success) {
+            showAlert('Conversation exported and sent to your email!', 'success');
+            exportModal.hide();
+        } else {
+            showAlert('Export failed.', 'danger');
+        }
+    } catch (err) {
+        showAlert('Export failed: ' + (err.response?.data?.error || err.message), 'danger');
+    } finally {
+        exportBtnText.classList.remove('d-none');
+        exportSpinner.classList.add('d-none');
+    }
+});
+</script>
+<!-- File Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="previewModalLabel">File Preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="previewModalBody" style="min-height:300px; text-align:center;"></div>
+    </div>
+  </div>
+</div>
+<script>
+const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+const previewModalBody = document.getElementById('previewModalBody');
+
+fileInfo.addEventListener('click', async () => {
+    if (!fileMeta) return;
+    // You must set fileMeta.url to the downloadable/viewable file URL after upload.
+    let fileUrl = fileMeta.url;
+    if (!fileUrl) {
+        previewModalBody.innerHTML = `<div class="text-muted">No preview available (file URL missing).</div>`;
+        previewModal.show();
+        return;
+    }
+    if (fileMeta.type && fileMeta.type.startsWith('image/')) {
+        previewModalBody.innerHTML = `<img src="${fileUrl}" class="img-fluid" alt="Image Preview">`;
+    } else if (fileMeta.type === 'application/pdf') {
+        previewModalBody.innerHTML = `<embed src="${fileUrl}" type="application/pdf" width="100%" height="500px"/>`;
+    } else if (
+        fileMeta.type === 'application/msword' ||
+        fileMeta.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ) {
+        previewModalBody.innerHTML = `
+            <div class="mb-2">DOC/DOCX preview may require download:</div>
+            <a href="${fileUrl}" target="_blank" class="btn btn-primary">Download File</a>
+        `;
+    } else {
+        previewModalBody.innerHTML = `<div class="text-muted">Preview not supported for this file type.</div>`;
+    }
+    previewModal.show();
+});
+</script>
+<!-- Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+</body>
+</html>
