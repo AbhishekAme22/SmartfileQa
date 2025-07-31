@@ -1,0 +1,70 @@
+{
+  "info": {
+    "name": "SmartFileQA API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Upload File",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "file", "type": "file", "src": "" },
+            { "key": "email", "type": "text", "value": "user@example.com" },
+            { "key": "conversation_id", "type": "text", "value": "1" }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/upload",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "upload"]
+        }
+      }
+    },
+    {
+      "name": "Ask Question",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"conversation_id\": 1,\n  \"prompt\": \"What is this file about?\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/ask",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "ask"]
+        }
+      }
+    },
+    {
+      "name": "Export Conversation",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"conversation_id\": 1,\n  \"email\": \"user@example.com\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/export",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "export"]
+        }
+      }
+    }
+  ]
+}

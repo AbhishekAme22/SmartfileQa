@@ -1,0 +1,31 @@
+{
+  "name": "smartfile",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "keywords": [],
+  "description": "",
+  "dependencies": {
+    "@chroma-core/default-embed": "^0.1.8",
+    "chromadb": "^3.0.10",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "firebase-admin": "^13.4.0",
+    "mammoth": "^1.9.1",
+    "multer": "^2.0.2",
+    "nodemailer": "^7.0.5",
+    "openai": "^5.10.2",
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^1.1.1",
+    "pg": "^8.16.3",
+    "puppeteer": "^24.15.0",
+    "sequelize": "^6.37.7",
+    "tesseract.js": "^6.0.1",
+    "textract": "^2.5.0"
+  }
+}

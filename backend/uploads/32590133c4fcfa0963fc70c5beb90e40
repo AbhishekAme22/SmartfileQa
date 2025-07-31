@@ -1,0 +1,58 @@
+/*
+🔧 Project: Smart File QA Web App – Node.js Backend
+
+📌 Objective:
+Build a backend system that supports a smart file question-answering web app. 
+Users can upload files (PDFs, Word docs, images, videos), ask questions about the content, 
+and receive answers using OpenAI. Later, they can export the entire conversation to a PDF and receive it via email.
+
+🧱 Stack:
+- Node.js + Express
+- PostgreSQL for all storage
+- ChromaDB for vector search
+- Multer for file uploads
+- pdf-parse, mammoth, or textract for text extraction (based on file type)
+- OpenAI API for GPT-based answers
+- Nodemailer for email with PDF export
+- pdf-lib / puppeteer for generating exportable PDFs
+
+📦 Flow:
+
+1. 📥 File Upload:
+   - Frontend sends a file, user email, and conversation ID.
+   - Extract text from the file on the backend.
+   - Save file metadata and extracted text in PostgreSQL.
+   - Store semantic chunks in ChromaDB (embed via OpenAI API).
+
+2. 💬 Conversation & QA:
+   - When a user submits a prompt, fetch relevant chunks via ChromaDB similarity search.
+   - Send the context + prompt to OpenAI and return the answer.
+   - Save prompt + response in the DB under the correct conversation.
+
+3. 🧾 Export to PDF:
+   - Frontend sends conversation ID and user email.
+   - Fetch all prompts, answers, file metadata.
+   - Generate PDF with:
+     - Inline images
+     - Links for videos or large files
+     - All Q&A pairs
+   - Email the PDF using Nodemailer.
+
+🗃 Database Schema (PostgreSQL):
+- users(id, email)
+- conversations(id, user_id, title, created_at)
+- files(id, conversation_id, file_name, file_type, file_url, extracted_text)
+- extracted_chunks(id, file_id, chunk_text, embedding)
+- messages(id, conversation_id, prompt, answer)
+- exports(id, conversation_id, pdf_url, sent_to)
+
+🔁 All operations are grouped by `conversation_id` for contextual continuity.
+
+✅ Help generate:
+- API routes (upload, ask, export)
+- File parsers for PDF, DOCX, etc.
+- ChromaDB integration with embedded chunks
+- OpenAI API integration (completion + embeddings)
+- PostgreSQL model functions or ORM models
+- PDF generation and Nodemailer email logic
+*/
